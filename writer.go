@@ -4,26 +4,23 @@
 
 package latinx
 
-import (
-    "io"
-    "os"
-)
+import "io"
 
 // A LatinWriter writer will encode UTF-8 byte-streams into selected
 // ISO 8859 byte-stream, before writing them to underlying io.Writer.
 type LatinWriter struct {
-    writer    io.Writer
-    converter *Converter
+	writer    io.Writer
+	converter *Converter
 }
 
 // Initialize a new LatinWriter with an underlying io.Writer and one
 // of the available charsets (ISO_8895_1,ISO_8895_2...).
 func NewWriter(charset int, w io.Writer) io.Writer {
-    conv, ok := converters[charset]
-    if !ok {
-        return nil
-    }
-    return &LatinWriter{writer: w, converter: conv}
+	conv, ok := converters[charset]
+	if !ok {
+		return nil
+	}
+	return &LatinWriter{writer: w, converter: conv}
 }
 
 // The returned n represents how much of the input we where able to write,
@@ -31,45 +28,45 @@ func NewWriter(charset int, w io.Writer) io.Writer {
 // Converter.Encode converts multibyte UTF-8 into singlebyte ISO 8859, i.e. 
 // if you write []byte("€€€") using charset ISO_8859_15, it will return 9,
 // but it actually just wrote 3 bytes to underlying io.Writer.
-func (w *LatinWriter) Write(p []byte) (n int, err os.Error) {
+func (w *LatinWriter) Write(p []byte) (n int, err error) {
 
-    var e2 os.Error
-    var latin []byte
-    var size, n2 int
+	var e2 error
+	var latin []byte
+	var size, n2 int
 
-    latin, size, err = w.converter.Encode(p)
+	latin, size, err = w.converter.Encode(p)
 
-    switch err.(type) {
+	switch err.(type) {
 
-    case UnknownRuneError:
-        n = 0
-        break
+	case UnknownRuneError:
+		n = 0
+		break
 
-    case UnicodeError:
+	case UnicodeError:
 
-        // Its either ILLEGAL or PARTIAL (PARTIAL is good)
+		// Its either ILLEGAL or PARTIAL (PARTIAL is good)
 
-        if err == ILLEGAL {
-            return 0, err
-        }
+		if err == ILLEGAL {
+			return 0, err
+		}
 
-        // Must be PARTIAL
+		// Must be PARTIAL
 
-        n2, e2 = w.writer.Write(latin)
+		n2, e2 = w.writer.Write(latin)
 
-        if e2 == nil {
-            n = size
-        } else {
-            n = n2
-            err = e2 // priority to inner os.Error
-        }
+		if e2 == nil {
+			n = size
+		} else {
+			n = n2
+			err = e2 // priority to inner os.Error
+		}
 
-        break
+		break
 
-    case nil:
-        n, err = w.writer.Write(latin)
-        break
-    }
+	case nil:
+		n, err = w.writer.Write(latin)
+		break
+	}
 
-    return
+	return
 }
